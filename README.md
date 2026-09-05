@@ -12,6 +12,9 @@ That failure has no error message. It is the one this workflow is built to catch
 
 ```
 workflow/source-watch.json    ← import this into n8n
+
+Verified on n8n 2.35.7 / Node 22.23.2 — imported, executed, dedupe and
+heartbeats confirmed from the stored data. Details at the bottom.
 ```
 
 ---
@@ -116,21 +119,70 @@ measure should be sent to a human.
 
 ---
 
-## What is not verified
+## Verified
 
-Being straight about this, because the whole point of the repo is honesty about
-failure modes:
+Imported and executed on **n8n 2.35.7, Node 22.23.2**.
 
-- The JSON is **structurally validated** — parses, node/connection graph is
-  consistent, every node has the required fields, the JavaScript is balanced
-  and returns.
-- It has **not been executed in a live n8n instance by me.** Import it and run
-  it once before trusting it.
+```
+Run manually                     success    1 item
+Sources                          success    2 items
+Fetch source                     success    2 items
+Check, dedupe, detect silence    success    1 item     15 ms
+Build messages                   success    0 items
+```
+
+Then read straight out of the workflow's stored static data:
+
+```
+fingerprint store : 600 entries
+source heartbeats : 2   hn-jobs, example-feed
+second run        : 0 new items
+```
+
+Three things that proves:
+
+- **The metadata fix works.** The heartbeats are keyed `hn-jobs` and
+  `example-feed`. Before the fix there would have been a single `unknown`
+  key, and the silence check could not have fired for any individual source.
+- **Deduplication works.** 600 fingerprints stored on the first run; the
+  second run produced zero items and sent nothing.
+- **Build messages produced 0 items on a quiet run** — which is correct.
+  Nothing new, nothing broken, no notification. Silence in the right place.
+
+### Two more things that only showed up on a real machine
+
+**1. A hand-written workflow will not import.**
+
+```
+SQLITE_CONSTRAINT: NOT NULL constraint failed: workflow_entity.id
+```
+
+An export from the n8n UI carries a top-level `id`. A file assembled by hand
+does not, and `import:workflow` rejects it without saying which field is
+missing. Adding `"id"` at the root fixed it.
+
+**2. A workflow with only a Schedule Trigger cannot be run by hand.**
+
+```
+Missing node to start execution
+Please make sure the workflow you're calling contains an Execute Workflow Trigger node
+```
+
+`n8n execute` needs a manually-triggerable start node. The Schedule Trigger
+alone is not one.
+
+This is more than a CLI detail. **A workflow nobody can run on demand is a
+workflow nobody verifies.** It sits there being green on a schedule, and the
+only way to find out whether it still works is to wait and hope. Both triggers
+are now wired to the same entry point.
+
+## What is still not verified
+
+- Telegram is not exercised. It needs credentials and `TELEGRAM_CHAT_ID`; the
+  run above reached the node with `onError: continueRegularOutput`.
+- The silence alert has not fired in anger — it cannot, on a fresh store,
+  until a source has been quiet past its own limit. The clock starts on run one.
 - The two example sources are public test endpoints. Replace them.
-- Telegram needs credentials and a `TELEGRAM_CHAT_ID` env var.
-
-If import fails or a node version mismatches your n8n, open an issue — that is
-useful information and it will go in this README too.
 
 ---
 
