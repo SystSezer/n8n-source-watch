@@ -12,10 +12,11 @@ That failure has no error message. It is the one this workflow is built to catch
 
 ```
 workflow/source-watch.json    ← import this into n8n
-
-Verified on n8n 2.35.7 / Node 22.23.2 — imported, executed, dedupe and
-heartbeats confirmed from the stored data. Details at the bottom.
 ```
+
+Verified on **n8n 2.35.7 / Node 22.23.2** — imported, executed, dedupe and
+heartbeats confirmed by reading the stored data back out. Details, and the
+two errors it took to get there, [at the bottom](#verified).
 
 ---
 
